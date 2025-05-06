@@ -39,13 +39,3 @@
 #
 ## Compress the QC'd file
 #gzip $OUT_DIR/${TYPE}_qc_noMHC.csv
-
-cd /cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer/mixer/reference/sumstats
-
-gzip vnr_qc_noMHC.csv
-gzip numeric_qc_noMHC.csv
-gzip prospective_qc_noMHC.csv
-gzip memory_qc_noMHC.csv
-gzip symbol_qc_noMHC.csv
-gzip tmtb_qc_noMHC.csv
-gzip rt_qc_noMHC.csv
