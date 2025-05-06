@@ -2,7 +2,7 @@
 #SBATCH --partition=interruptible_cpu
 # run_all_bivariate.sh
 # Master script to run bivariate mixer tests for 20 trait pairs.
-# For each pair, it submits an array job covering replications 1–20.
+# For each pair, it submits an array job covering replications 1â€“20.
 
 export COMORMENT=/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer
 # Univariate and bivariate output directories:
@@ -128,8 +128,6 @@ singularity exec --home $PWD:/home $SIF python /tools/mixer/precimed/mixer.py te
   --load-params "${fit_file}.json" \
   --out "${bivar_dir}/${pair_name}.test.rep${SLURM_ARRAY_TASK_ID}"
 
-  # The waiting loop is outside the sbatch submission so that the master script
-  # pauses until all jobs for the current trait pair finish.
   echo "Waiting for jobs of ${pair_name} to complete..."
   while squeue -u "$USER" | grep -q "bivar_${pair_name}"; do
     sleep 60
