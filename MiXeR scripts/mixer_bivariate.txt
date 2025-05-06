@@ -1,0 +1,140 @@
+#!/bin/bash
+#SBATCH --partition=interruptible_cpu
+# run_all_bivariate.sh
+# Master script to run bivariate mixer tests for 20 trait pairs.
+# For each pair, it submits an array job covering replications 1–20.
+
+export COMORMENT=/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer
+# Univariate and bivariate output directories:
+uni_out="${COMORMENT}/mixer/mixer_output"
+bivar_out="${COMORMENT}/mixer/bivariate_rerun"
+# The SIF variable here is used only in the master script, but we reassign it in the job script.
+SIF="${COMORMENT}/mixer/singularity"
+
+# List of trait pairs (trait1 trait2)
+trait_pairs=(
+  "memory prospective"
+  "memory symbol"
+  "memory numeric"
+  "memory tmtb"
+  "memory vnr"
+  "rt prospective"
+  "rt symbol"
+  "rt numeric"
+  "rt tmtb"
+  "rt vnr"
+  "prospective symbol"
+  "prospective numeric"
+  "prospective tmtb"
+  "prospective vnr"
+  "symbol numeric"
+  "symbol tmtb"
+  "symbol vnr"
+  "numeric tmtb"
+  "numeric vnr"
+  "tmtb vnr"
+)
+
+for pair in "${trait_pairs[@]}"; do
+  read trait1 trait2 <<< "$pair"
+  pair_name="${trait1}_vs_${trait2}"
+  
+  echo "Submitting bivariate job for ${pair_name} (reps 1-20)..."
+  
+  sbatch --job-name="bivar_${pair_name}" \
+         --output="${bivar_out}/${pair_name}-%A_%a.txt" \
+         --error="${bivar_out}/${pair_name}-%A_%a.txt" \
+         --time=08:00:00 \
+         --partition=interruptible_cpu \
+         --cpus-per-task=5 \
+         --mem-per-cpu=10G \
+         --array=1-20
+
+#!/bin/bash
+# Explicitly assign variables from the master script:
+trait1="${trait1}"
+trait2="${trait2}"
+pair_name="${pair_name}"
+COMORMENT="/scratch/users/k20051211/mixer"
+SIF="${COMORMENT}/mixer/singularity/mixer.sif"
+uni_out="${COMORMENT}/mixer/mixer_output"
+bivar_out="${COMORMENT}/mixer/bivariate_output"
+
+module purge
+
+# Set up Singularity bindings as in the univariate run.
+export SINGULARITY_BIND="$COMORMENT/mixer/reference:/REF:ro"
+export MIXER_COMMON_ARGS="--ld-file /REF/ldsc/1000G_EUR_Phase3_plink/1000G.EUR.QC.@.run4.ld --bim-file /REF/ldsc/1000G_EUR_Phase3_plink/1000G.EUR.QC.@.bim --threads 5"
+export REP="rep${SLURM_ARRAY_TASK_ID}"
+export EXTRACT="--extract /REF/ldsc/1000G_EUR_Phase3_plink/1000G.EUR.QC.prune_maf0p05_rand2M_r2p8.${REP}.snps"
+
+# Set paths for summary statistics inside the container.
+export MEMORY="/REF/sumstats/memory_qc_noMHC.csv.gz"
+export RT="/REF/sumstats/rt_qc_noMHC.csv.gz"
+export PROSPECTIVE="/REF/sumstats/prospective_qc_noMHC.csv.gz"
+export SYMBOL="/REF/sumstats/symbol_qc_noMHC.csv.gz"
+export NUMERIC="/REF/sumstats/numeric_qc_noMHC.csv.gz"
+export TMTB="/REF/sumstats/tmtb_qc_noMHC.csv.gz"
+export VNR="/REF/sumstats/vnr_qc_noMHC.csv.gz"
+
+# Choose appropriate file for each trait.
+case "${trait1}" in
+  memory) trait1_file="$MEMORY" ;;
+  rt) trait1_file="$RT" ;;
+  prospective) trait1_file="$PROSPECTIVE" ;;
+  symbol) trait1_file="$SYMBOL" ;;
+  numeric) trait1_file="$NUMERIC" ;;
+  tmtb) trait1_file="$TMTB" ;;
+  vnr) trait1_file="$VNR" ;;
+  *) echo "Unknown trait: ${trait1}" ; exit 1 ;;
+esac
+
+case "${trait2}" in
+  memory) trait2_file="$MEMORY" ;;
+  rt) trait2_file="$RT" ;;
+  prospective) trait2_file="$PROSPECTIVE" ;;
+  symbol) trait2_file="$SYMBOL" ;;
+  numeric) trait2_file="$NUMERIC" ;;
+  tmtb) trait2_file="$TMTB" ;;
+  vnr) trait2_file="$VNR" ;;
+  *) echo "Unknown trait: ${trait2}" ; exit 1 ;;
+esac
+
+# Uppercase trait names for parameter file naming.
+trait1_upper=$(echo "${trait1}" | tr '[:lower:]' '[:upper:]')
+trait2_upper=$(echo "${trait2}" | tr '[:lower:]' '[:upper:]')
+
+# Define directories inside the container.
+uni_dir="/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer/mixer/mixer_output/"
+bivar_dir="/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer/mixer/bivariate_rerun/"
+
+# Define the fit file 
+fit_file="${bivar_dir}/${pair_name}.fit.rep${SLURM_ARRAY_TASK_ID}.json"
+
+echo "Running fit2 for ${pair_name}, replication ${SLURM_ARRAY_TASK_ID}..."
+singularity exec --home $PWD:/home $SIF python /tools/mixer/precimed/mixer.py fit2 \
+  $MIXER_COMMON_ARGS $EXTRACT \
+  --trait1-file "${trait1_file}" \
+  --trait2-file "${trait2_file}" \
+  --trait1-params "${uni_dir}/${trait2_upper}.fit.${REP}.json" \
+  --trait2-params "${uni_dir}/${trait1_upper}.fit.${REP}.json" \
+  --out "${fit_file}"
+
+echo "Running test2 for ${pair_name}, replication ${SLURM_ARRAY_TASK_ID}..."
+singularity exec --home $PWD:/home $SIF python /tools/mixer/precimed/mixer.py test2 \
+  $MIXER_COMMON_ARGS \
+  --trait1-file "${trait1_file}" \
+  --trait2-file "${trait2_file}" \
+  --load-params "${fit_file}.json" \
+  --out "${bivar_dir}/${pair_name}.test.rep${SLURM_ARRAY_TASK_ID}"
+
+  # The waiting loop is outside the sbatch submission so that the master script
+  # pauses until all jobs for the current trait pair finish.
+  echo "Waiting for jobs of ${pair_name} to complete..."
+  while squeue -u "$USER" | grep -q "bivar_${pair_name}"; do
+    sleep 60
+  done
+  echo "Bivariate test for ${pair_name} completed."
+done
+
+echo "All bivariate tests submitted."

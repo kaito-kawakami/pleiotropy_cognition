@@ -1,0 +1,29 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=16
+#SBATCH --ntasks=1
+#SBATCH --partition=interruptible_cpu
+#SBATCH --mem=50G
+
+# (note: this is written for a slurm job scheduler, adapt as necessary)
+export OMP_NUM_THREADS=1 # n/o threads per process (important for parallelisation)
+
+### This job script which will copy all the data to the temp dir, perform the analysis for a single phenotype pair, and copy the results back
+module load rstudio/v2023.03.0_386-gcc-13.2.0-r-4.3.0-python-3.11.6
+
+# parameters passed from the submission script
+source $1 # path for settings file
+P1=$2 # phenotype 1
+P2=$3 # phenotype 2
+
+# copy data to tempdir
+cp $DATA/$P1.sumstats.gz $DATA/$P2.sumstats.gz $TMPDIR	# sumstats
+cp $INFOFILE $OVERLAP $LOCFILE $TMPDIR	# info file / sample overlap / locus file
+cp $REFDAT* $TMPDIR					# reference data
+cp lava_rg.R $TMPDIR						# analysis script
+cd $TMPDIR
+
+## ANALYSE ## 
+Rscript lava_rg.R $REFDAT $LOCFILE $INFOFILE $OVERLAP "$P1;$P2" "$P1.$P2"
+
+# copy results to local output dir (as specified in settings.sh) 
+cp *univ *bivar $OUT

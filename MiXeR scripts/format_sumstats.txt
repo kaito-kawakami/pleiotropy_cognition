@@ -1,0 +1,51 @@
+#!/bin/bash
+#SBATCH --job-name=mixer_bivar
+#SBATCH --output=mixer_bivar-%A_%a.txt
+#SBATCH --error=mixer_bivar-%A_%a.txt
+#SBATCH --time=02:00:00
+#SBATCH --partition=interruptible_cpu
+#SBATCH --nodes=10
+#SBATCH --mem=15G
+#SBATCH --array=1
+
+# Load the appropriate Python module
+#module load python/3.11.6-gcc-13.2.0
+#
+## Set base directory and paths for files and scripts
+#export BASE_DIR="/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final"
+#export PYTHON_SCRIPT="/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer/mixer/format_sumstats/python_convert/sumstats.py"
+#export OUT_DIR="/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer/mixer/reference/sumstats"
+#
+## Define arrays of sumstat types and their corresponding file paths
+#SUMSTAT_TYPES=("symbol" "numeric" "memory" "prospective" "rt" "vnr" "tmtb")
+#SUMSTAT_PATHS=(
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/20159.symbol.1.fastGWA.gz"
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/20240.numeric.1.fastGWA.gz"
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/399.pairs.1.fastGWA.gz"
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/20018.prospective.1.fastGWA.gz"
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/20023.rt.1.fastGWA.gz"
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/20016.vnr.1.fastGWA.gz"
+#    "/cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/scratch_tmp/network_final/20157.tmtb.1.fastGWA.gz"  
+#)
+#
+## Select the sumstat type and file based on the SLURM_ARRAY_TASK_ID
+#TYPE=${SUMSTAT_TYPES[$SLURM_ARRAY_TASK_ID]}
+#SUMSTAT=${SUMSTAT_PATHS[$SLURM_ARRAY_TASK_ID]}
+#
+## Process the selected sumstat file
+#python $PYTHON_SCRIPT csv --sumstats $SUMSTAT --out $OUT_DIR/${TYPE}.csv --force --auto --head 5
+#python $PYTHON_SCRIPT zscore --sumstats $OUT_DIR/${TYPE}.csv | \
+#python $PYTHON_SCRIPT qc --exclude-ranges 6:26000000-34000000 --out $OUT_DIR/${TYPE}_qc_noMHC.csv --force
+#
+## Compress the QC'd file
+#gzip $OUT_DIR/${TYPE}_qc_noMHC.csv
+
+cd /cephfs/volumes/hpc_data_usr/k20051211/8e486e0b-f00f-4534-8dcc-d66a07c10fd5/mixer/mixer/reference/sumstats
+
+gzip vnr_qc_noMHC.csv
+gzip numeric_qc_noMHC.csv
+gzip prospective_qc_noMHC.csv
+gzip memory_qc_noMHC.csv
+gzip symbol_qc_noMHC.csv
+gzip tmtb_qc_noMHC.csv
+gzip rt_qc_noMHC.csv
