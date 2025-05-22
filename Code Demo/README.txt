@@ -24,6 +24,6 @@ Step 1: Download the R programming language (https://www.r-project.org/)
 
 Step 2: Download R studio (https://posit.co/downloads/)
 
-Step 3: Open the cognitive_network_demo.R script in R studio, and install dependencies (about 2-3 minutes on a normal desktop computer)
+Step 3: Download the Code folder. Open the cognitive_network_demo.R script in R studio, and install dependencies (about 2-3 minutes on a normal desktop computer), and set the folder as the working directory.
 
 Step 4: Run the analysis script to estimate undirected genomic network (about 1-2 minutes on a normal desktop computer)
